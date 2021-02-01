@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Tomato"
         Icon="pack://application:,,,/watch.ico"
-        Height="400" Width="50"
+        Height="400" Width="20"
         WindowStyle="None"
         ResizeMode="NoResize"
         Background="Transparent"
@@ -15,6 +15,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         Deactivated="Window_Deactivated"
+        Loaded="Window_Loaded"
 >
     <Window.Resources>
         <Style TargetType="ProgressBar" x:Key="VolumeMeter">

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace Tomato {
@@ -27,25 +28,15 @@ namespace Tomato {
                 var desktop = SystemParameters.WorkArea;
                 Left = desktop.Right - Width;
                 Top = desktop.Bottom - Height;
-            }
-
-            {
-                var icon = new NotifyIcon();
-                icon.Visible = true;
-                using (var res = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/watch.ico")).Stream) {
-                    icon.Icon = new Icon(res);
-                }
-                icon.ContextMenuStrip = new ContextMenuStrip();
-                icon.ContextMenuStrip.Items.Add("exit", null, (s, e) => { Close(); });
-            }
+            }            
 
             {
                 // all time in s
                 var acc = 0;
-                var range = 10 * 60;
-                var timeStep = 1;
-                var holdTime = 3 * 60;
-                var decSpeed = range / 60 * timeStep;
+                var timeStep = 1; // 1s timer ticks
+                var range = 10 * 60; // 10min interval
+                var holdTime = 3 * 60; // decrement after 3min of inactivity
+                var decSpeed = range / 45; // after fire decrement within 45sec
                 var fired = false;
                 var firedTime = 0;
                 var prevInputTime = 0;
@@ -118,16 +109,62 @@ namespace Tomato {
                         blinky = null;
                     }
 
-                    if (isOverloaded && ((currentTime - firedTime) % 5) == 0) {
+                    if (isOverloaded && currentTime != firedTime && ((currentTime - firedTime) % 5) == 0) {
                         Beep();
                     }
 
                     if (fired && !cooling) {
                         cooling = true;
                     }
+
+                    if (ratio == 0 && cooling) {
+                        cooling = false;
+                        BeepCooled();
+                    }
                 };
                 timer.Interval = TimeSpan.FromSeconds(timeStep);
                 timer.Start();
+
+                {
+                    var icon = new NotifyIcon();
+                    icon.Visible = true;
+                    using (var res = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/watch.ico")).Stream) {
+                        icon.Icon = new Icon(res);
+                    }
+                    icon.ContextMenuStrip = new ContextMenuStrip();
+                    ToolStripButton toggleTimer = null;
+                    toggleTimer = new ToolStripButton("pause", null, (s, e) => {
+                        if (toggleTimer.Text == "pause") {
+                            timer.Stop();
+                            toggleTimer.Text = "resume";
+                        }
+                        else {
+                            timer.Start();
+                            toggleTimer.Text = "pause";
+                        }
+                    });
+                    icon.ContextMenuStrip.Items.Add(toggleTimer);
+                    icon.ContextMenuStrip.Items.Add("exit", null, (s, e) => { Close(); });
+                }
+            }
+
+            {
+                var leaveTimer = new DispatcherTimer();
+                leaveTimer.Interval = TimeSpan.FromSeconds(0.5);
+                leaveTimer.Tick += (s, e) => {
+                    var mouseScreen = Control.MousePosition;
+                    var windowScreen = new System.Windows.Point(Left, Top);
+
+                    var isOutside = !new Rect(Left, Top, Width, Height).Contains(mouseScreen.X, mouseScreen.Y);
+
+                    if (isOutside) {
+                        Opacity = 1;
+                        leaveTimer.Stop();
+                    }
+                };
+
+                MouseEnter += (s, e) => Opacity = 0;
+                MouseLeave += (s, e) => leaveTimer.Start();
             }
         }
 
@@ -143,6 +180,29 @@ namespace Tomato {
                 Console.Beep(2400, 200);
                 Console.Beep(2400, 200);
             });
+        }
+
+        void BeepCooled() {
+            Task.Factory.StartNew(() => {
+                Console.Beep(3000, 200);
+                Console.Beep(2500, 200);
+            });
+        }
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        private void Window_Loaded(object sender, RoutedEventArgs e) {
+            const int GWL_EXSTYLE = -20;
+            const int WS_EX_TOOLWINDOW = 0x00000080;
+
+            var wndHelper = new WindowInteropHelper(this);
+            var exStyle = (int)GetWindowLongPtr(wndHelper.Handle, GWL_EXSTYLE) | WS_EX_TOOLWINDOW;
+
+            SetWindowLongPtr(wndHelper.Handle, GWL_EXSTYLE, (IntPtr)exStyle);
         }
     }
 }
