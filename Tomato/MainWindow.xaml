@@ -113,8 +113,14 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid>
         <ProgressBar Height="400" Orientation="Vertical" Maximum="1.0" Style="{StaticResource VolumeMeter}" Name="progress" />
+
+        <Grid Panel.ZIndex="1000" Visibility="Collapsed" Name="overlay">
+            <Grid.Background>
+                <SolidColorBrush Color="Black" Opacity="0.7"/>
+            </Grid.Background>
+        </Grid>
     </Grid>
 </Window>

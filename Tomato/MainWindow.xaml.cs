@@ -132,18 +132,20 @@ namespace Tomato {
                         icon.Icon = new Icon(res);
                     }
                     icon.ContextMenuStrip = new ContextMenuStrip();
-                    ToolStripButton toggleTimer = null;
-                    toggleTimer = new ToolStripButton("pause", null, (s, e) => {
+                    icon.ContextMenuStrip.Items.Add("pause", null, (s, e) => {
+                        var toggleTimer = (ToolStripItem)s;
+
                         if (toggleTimer.Text == "pause") {
                             timer.Stop();
                             toggleTimer.Text = "resume";
+                            overlay.Visibility = Visibility.Visible;
                         }
                         else {
                             timer.Start();
                             toggleTimer.Text = "pause";
+                            overlay.Visibility = Visibility.Collapsed;
                         }
                     });
-                    icon.ContextMenuStrip.Items.Add(toggleTimer);
                     icon.ContextMenuStrip.Items.Add("exit", null, (s, e) => { Close(); });
                 }
             }
