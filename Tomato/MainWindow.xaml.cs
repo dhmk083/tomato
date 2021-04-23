@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Drawing;
+using System.Media;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace Tomato {
@@ -21,8 +23,10 @@ namespace Tomato {
         [DllImport("user32.dll")]
         static extern bool GetLastInputInfo(ref LastInputInfo info);
 
+        readonly MediaPlayer snd = new MediaPlayer();
+
         public MainWindow() {
-            InitializeComponent();            
+            InitializeComponent();
 
             {
                 var desktop = SystemParameters.WorkArea;
@@ -31,15 +35,18 @@ namespace Tomato {
             }            
 
             {
-                // all time in s
+                // all time in sec
                 var acc = 0;
-                var timeStep = 1; // 1s timer ticks
-                var range = 10 * 60; // 10min interval
-                var holdTime = 3 * 60; // decrement after 3min of inactivity
-                var decSpeed = range / 45; // after fire decrement within 45sec
+                var timeStep = 1; // X sec timer ticks
+                var range = 15 * 60; // time in seconds before overload
+                var holdTime = 3 * 60; // do not decrement acc after inactivity for X sec
+                var decSpeed = range / 60; // after overload decrement within X sec
+                var toastPeriod = range / 5; // show toast every X sec while incrementing
+
                 var fired = false;
                 var firedTime = 0;
                 var prevInputTime = 0;
+                var nextToastTime = 0;
                 var cooling = false;
                 Window blinky = null;
 
@@ -121,6 +128,12 @@ namespace Tomato {
                         cooling = false;
                         BeepCooled();
                     }
+
+                    if (!cooling && acc >= nextToastTime) {
+                        ShowToast();
+                    }
+
+                    nextToastTime = ((int)Math.Floor(acc / (float)toastPeriod) + 1) * toastPeriod;
                 };
                 timer.Interval = TimeSpan.FromSeconds(timeStep);
                 timer.Start();
@@ -168,6 +181,8 @@ namespace Tomato {
                 MouseEnter += (s, e) => Opacity = 0;
                 MouseLeave += (s, e) => leaveTimer.Start();
             }
+
+            snd.Open(new Uri("notify.mp3", UriKind.Relative));
         }
 
         private void Window_Deactivated(object sender, EventArgs e) {
@@ -191,11 +206,44 @@ namespace Tomato {
             });
         }
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
 
-        [DllImport("user32.dll")]
-        public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+        void ShowToast() {
+            snd.Position = TimeSpan.Zero;
+            snd.Play();
+
+            var toast = new Toast();
+            toast.Left = SystemParameters.WorkArea.Right - toast.Width;
+            toast.Top = 200;
+            toast.Show();
+
+            var timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(15);
+            timer.Tick += (s, e) => toast.Close();
+            timer.Start();
+        }
+
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+        static extern IntPtr GetWindowLongPtr32(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+        static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+        static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) {
+            return IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLongPtr32(hWnd, nIndex);
+        }
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        static extern IntPtr SetWindowLongPtr32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) {
+            return IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : SetWindowLongPtr32(hWnd, nIndex, dwNewLong);
+        }
+
 
         private void Window_Loaded(object sender, RoutedEventArgs e) {
             const int GWL_EXSTYLE = -20;
