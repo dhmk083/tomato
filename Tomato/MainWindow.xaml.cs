@@ -40,7 +40,7 @@ namespace Tomato {
                 var timeStep = 1; // X sec timer ticks
                 var range = 15 * 60; // time in seconds before overload
                 var holdTime = 3 * 60; // do not decrement acc after inactivity for X sec
-                var decSpeed = range / 60; // after overload decrement within X sec
+                var decSpeed = 30; // after overload decrement within X sec
                 var toastPeriod = range / 5; // show toast every X sec while incrementing
 
                 var fired = false;
@@ -76,7 +76,7 @@ namespace Tomato {
                         cooling = false;
                     }
 
-                    var decThreshold = cooling ? timeStep * 10 : holdTime;
+                    var decThreshold = cooling ? timeStep : holdTime;
 
                     if (lastInputDelta >= decThreshold) {
                         if (cooling) {
