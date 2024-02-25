@@ -20,6 +20,12 @@ namespace Tomato {
     public partial class Toast : Window {
         bool closeAnimated = false;
 
+        public double Progress { 
+            set {
+                //progress.Value = value;
+            } 
+        }
+
         public Toast() {
             InitializeComponent();
 

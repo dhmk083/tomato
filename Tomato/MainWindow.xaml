@@ -15,7 +15,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         Deactivated="Window_Deactivated"
-        Loaded="Window_Loaded"
+        Opacity="0"
 >
     <Window.Resources>
         <Style TargetType="ProgressBar" x:Key="VolumeMeter">
